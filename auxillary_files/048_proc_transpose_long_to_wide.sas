@@ -39,9 +39,9 @@ data retrans2;
 /*   if . le height lt 55 and sex="F" then heightc=strip(heightc)||"*";*/
 /*   if . le height lt 60 and sex="M" then heightc=strip(heightc)||"@";*/
 
-/*   if . le height lt 55 and sex="F" then heightc=strip(heightc)||"*";*/
-/*   else if . le height lt 60 and sex="M" then heightc=strip(heightc)||"@";*/
-/*     else if not missing(height) then heightc=strip(put(height,best.));*/
+   if . le height lt 55 and sex="F" then heightc=strip(heightc)||"*";
+   else if . le height lt 60 and sex="M" then heightc=strip(heightc)||"@";
+   else if not missing(height) then heightc=strip(put(height,best.));
 
       if . le height lt 60 then do;
          if sex="F" then heightc=strip(heightc)||"*";
