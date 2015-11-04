@@ -269,12 +269,12 @@ run;
 
 data &var._stats2;
    set &var._stats;
-   n=put(&var._n,&n.);
-   mean=put(&var._mean,&mean.);
-   sd=put(&var._stddev,&sd.);
-   min=put(&var._min,&min.);
-   median=put(&var._median,&median.);
-   max=put(&var._max,&max.);
+   if not missing(&var._n) then n=put(&var._n,&n.);
+   if not missing(&var._meana) thenmean=put(&var._mean,&mean.);
+   if not missing(&var._stddev) thensd=put(&var._stddev,&sd.);
+   if not missing(&var._min) then min=put(&var._min,&min.);
+   if not missing(&var._median) then median=put(&var._median,&median.);
+   if not missing(&var._max) then max=put(&var._max,&max.);
 
    drop &var._:;
 run;
