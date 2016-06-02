@@ -9,3 +9,4 @@ proc print data=_x_x_excel label noobs
     label description="Description"
         count="No. of files";
 run;
+ods tagsets.excelxp close;
