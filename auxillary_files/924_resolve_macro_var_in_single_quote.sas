@@ -4,7 +4,7 @@ keypoint:
 put %unquote(%bquote(')-awstitle "This is &compound."  %bquote('));
 resolved string:
 -awstitle "This is compound10"  
-
+link to the article:http://support.sas.com/resources/papers/proceedings15/2221-2015.pdf;
 
 options ls=max;
 
