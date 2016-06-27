@@ -11,7 +11,7 @@ to suppdataset based on the blank supp dataset.
 
 dm log 'clear';
 
-libname anil "D:\Home\dev\master_files\copied\xxxxx_sdtm\Spec";
+libname xxxx "D:\Home\dev\master_files\copied\xxxxx_sdtm\Spec";
 
 *------------------------------------------------------------------------------;
 *create attributes from the read spec;
