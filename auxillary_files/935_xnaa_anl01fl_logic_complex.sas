@@ -111,3 +111,112 @@ proc sort data=vs_final;
 run;
 
 %ut_saslogcheck;
+
+*secondary logic - need to be tested (cross-checked) against first logic;
+
+/*---- Start of User Written Code  ----*/ 
+
+
+
+data anlflg;
+  set &_input;
+run;
+
+data anlflg1 anlflg2;
+  set anlflg;
+  if dtype = " " and paramcd not in ("BMI", "HEIGHTCM", "BMICAT") then output anlflg1;
+  else output anlflg2;
+run;
+
+/* check for duplicates */
+proc sort data=anlflg2 dupout=anlflg2chk nodupkey;
+  by usubjid avisitn paramcd;
+run;
+
+/* keep anlflg2 to append later and use anlflg1 to derive ANLO1FL flag */
+
+proc sort data=anlflg1;
+  by usubjid avisitn paramcd;
+run;
+
+data anlflg11 anlflg12;
+  set anlflg1;
+  by usubjid avisitn paramcd;
+  if (first.paramcd =last.paramcd)=1 then output anlflg11;
+  else output anlflg12;
+run;
+
+proc sort data=anlflg12 nodupkey;
+  by usubjid avisitn paramcd;
+run;
+
+/* getting unique records per usubjid avisitn paramcd */
+data anlflg3;
+  merge anlflg1(in=a) anlflg12(in=b);
+  by usubjid avisitn paramcd;
+  if a and not b;
+run;
+
+proc sort data=anlflg3 nodupkey;
+  by usubjid avisitn paramcd;  
+run;  
+
+
+/* getting only duplicates */
+data anlflg13;
+  merge anlflg1(in=a) anlflg12(in=b);
+  by usubjid avisitn paramcd;
+  if a and b;
+run;
+
+data anlflgscr anlflg14;
+  set anlflg13;
+  if avisit = "Screening" then output anlflgscr;
+  else output anlflg14;
+run;
+
+data anlflg15;
+  set anlflg14;
+  if avisit = "Day 1" then wk = 0;
+  else do;
+    wk = input(substr(avisit,6),8.);
+    targetd = (7 * wk) + 1;
+  end;
+  targetdf = abs(ady - targetd);
+run;
+
+proc sort data=anlflg15 out=anlflg5;
+  by usubjid avisitn paramcd targetdf descending adt descending atm;
+run;
+
+data anlflg51 anlflg52;
+  set anlflg5;
+   by usubjid avisitn paramcd targetdf descending adt descending atm;
+  if (first.atm =last.atm)=1 then output anlflg51;
+  else output anlflg52;
+run;
+
+proc sort data=anlflg15;
+  by usubjid avisitn paramcd targetdf descending adt descending atm; * descending vsseq;
+run;
+
+data anlflg1f;
+  set anlflg15;
+  by usubjid avisitn paramcd targetdf descending adt descending atm; * descending vsseq;
+  if first.paramcd then ANL01FL = "Y";
+run;
+
+data anlflg2f;
+  set anlflg2;
+  *ANL01FL = "Y";
+run;
+
+data anlflg3f;
+  set anlflg3;
+  ANL01FL = "Y";
+run;
+
+data anlflgf;
+  set anlflg1f anlflg2f anlflg3f anlflgscr;
+  if avisit in ("Screening") then ANL01FL = " ";              
+run;
