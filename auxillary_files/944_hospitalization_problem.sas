@@ -89,4 +89,49 @@ run;
 
 
 %ut_saslogcheck;
+*---------------------------------------------------------------------------------------------------------------------;
+*sandhya's approach;
+*---------------------------------------------------------------------------------------------------------------------;
 
+data ho1;
+	set ho;
+	by usubjid;
+    endt=lag(hoendt);
+	if first.usubjid then endt=hoendt;
+	format endt date9.;
+	if ~missing(hoendt) and ~missing(hostdt) then do;
+	if (hostdt ne endt) or (hostdt= hoendt) then dur=hoendt-hostdt+1;
+	else if hostdt = endt then dur=hoendt-hostdt;
+	end;
+run;
+
+
+data ho2(keep=usubjid trtan hostdt hoendt dur) tot(keep=trtan imp_dur);
+	set ho1;
+	by trtan usubjid;
+	retain tot_dur tot_sub;
+	if first.trtan then do tot_dur=.;
+						tot_sub=1;
+							
+	end;
+	if First.usubjid then subno=1;
+	if ~missing(dur) then do;
+	if first.usubjid and first.trtan then tot_sub=subno;
+		else tot_sub+subno;
+
+	if ~missing(dur) then  tot_dur+dur;
+
+	end;
+	output ho2;	
+	if last.trtan then  do imp_dur=tot_dur/tot_sub;
+	output tot;
+	end;
+run;
+
+data final;
+	merge ho2(in=a) tot(in=b);
+	by trtan ;
+	if a;
+	if missing(dur) then dur=imp_dur;
+	drop imp_dur;
+run;
