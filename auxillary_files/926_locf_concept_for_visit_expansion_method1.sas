@@ -12,6 +12,28 @@ options mautosource sasautos=(lums sasautos);
 %mend;
 
 dm "keydef F12 '%NRSTR(%closevts);'";
+*added some new data ;
+data lb;
+input usubjid paramcd $8. visitnum lbseq lbstresn lbnrind $8.;
+cards;
+001 paramcd 1 1 10 NORMAL
+001 paramcd 3 2 11
+001 paramcd 5 3 12 NORMAL
+;
+run;
+
+data sv;
+input usubjid visitnum;
+cards;
+001 1
+001 2
+001 3
+001 4
+001 5
+001 6
+;
+run;
+
 
 data lb;
 input usubjid paramcd $8. visitnum lbseq;
