@@ -12,7 +12,7 @@ run;
 
 
 
-proc freq data= &dsn1.  noprint;
+proc freq data= &dsn2.  noprint;
 	tables  &tablevar.  /list missing out=_uniquevalues02;
 	where 1=1;
 run;
@@ -32,6 +32,30 @@ data full both aonly bonly;
 run;
 
 
+proc sort data=&dsn1. out=&dsn1._sort;
+	by &byvar.;
+run;
+
+data check_a;
+	merge &dsn1._sort(in=a) full(in=b);
+	by &byvar.;
+	if a;
+run;
+
+proc sort data=&dsn2. out=&dsn2._sort;
+	by &byvar.;
+run;
+
+data check_b;
+	merge &dsn2._sort(in=a) full(in=b);
+	by &byvar.;
+	if a;
+run;
+
+
+
+
 %mend countcheck;
 
-%countcheck(dsn1=  , dsn2= , byvar=   );
+%countcheck(dsn1=  , dsn2= , byvar=  );
+
