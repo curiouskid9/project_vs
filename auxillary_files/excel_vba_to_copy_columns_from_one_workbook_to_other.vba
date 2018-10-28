@@ -4,9 +4,80 @@ Public lRow As Long
 Public lCol As Long
 Public dsn As String
 
+'this vba code loops through listed sheets to copy cells from old template to new template
+'handles label changes of replaced, addc to r_deriv,a_deriv
+'handles conversion of type to xmltype
+'populates significant digits column based on displayformat
+'populates source and sourcederivation columns based on origin column in old format
+'populates methodtype column based on origin column
+'caution: amateur version of vba code
+
+
+Sub LoopThroughSheets()
+
+    Dim sheets As Variant
+    
+    
+    Windows("old.xlsx").Activate
+    
+'"AMH","AAE","ACM","ACMANA","AAQAVIS","AEX","AIE","ADV","AAB","APQ","AVS","ALBSAF","ALBBNSP","AQSBPI","ASI","ASLEFF","ASLBASE","ADPC","ALS","ADFDS","ADFCB"
+    
+    'sheets = Array("AMH", "AAE", "ACM", "ACMANA", "AAQAVIS", "AEX", "AIE", "ADV", "AAB", "APQ", "AVS", "ALBSAF", "ALBBNSP", "AQSBPI", "ASI", "ASLEFF", "ASLBASE", "ADPC", "ALS", "ADFDS", "ADFCB")
+    sheets = Array("AAE", "AMH")
+    
+For Number = LBound(sheets) To UBound(sheets)
+    Windows("old.xlsx").Activate
+    dsn = sheets(Number)
+    With Worksheets(sheets(Number))
+        Worksheets(sheets(Number)).Select
+        
+
+        'Macro calls go here
+        
+        'Actual code goes here
+        Call Copycolumns
+        'MsgBox dsn
+        
+        
+    End With
+Next Number
+
+Windows("new.xlsm").Activate
+ActiveWorkbook.Save
+End Sub
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'Method to identify the last non-filled row and column in a sheet
+
+
 Sub Range_End_Method()
 
 Dim sheetrange As Range
+Dim mystring As String
 'Finds the last non-blank cell in a single row or column
 
     
@@ -18,18 +89,24 @@ Dim sheetrange As Range
            
     'MsgBox "last row: " & lRow & ", last column" & lCol
     
+End Sub
+
+
+
+
+Sub replacestrings()
+
+Call Range_End_Method
 
 Do While n <= lRow
 
     n = n + 1
 
 'Set Methodtype column based on origin value in old format
+    mystring = Trim(UCase(ActiveSheet.Range("C" & n).Value))
 
-    If UCase(ActiveSheet.Range("C" & n).Value) = "DERIVED" Then ActiveSheet.Range("D" & n).Value = "Computation"
-    ActiveSheet.Range("D" & n).Font.Name = "Arial"
-    ActiveSheet.Range("D" & n).Font.Size = 8
-    ActiveSheet.Range("D" & n).VerticalAlignment = xlTop
-    ActiveSheet.Range("D" & n).HorizontalAlignment = xlLeft
+
+    If InStr(mystring, "DERIVE") Then ActiveSheet.Range("D" & n).Value = "Computation"
     
 'Convert type to xmltype based on decimal precision
     If Trim(UCase(ActiveSheet.Range("I" & n).Value)) = "CHAR" Then ActiveSheet.Range("I" & n).Value = "text"
@@ -37,6 +114,7 @@ Do While n <= lRow
 'Change replacec values to r_deriv
 
     ActiveSheet.Range("N" & n).Value = Replace(ActiveSheet.Range("N" & n).Value, "[replacec]", "[r_deriv]")
+    ActiveSheet.Range("N" & n).Value = Replace(ActiveSheet.Range("N" & n).Value, "[addc]", "[a_deriv]")
        
        
 'Check integer/float type
@@ -50,10 +128,6 @@ Do While n <= lRow
     'Range("I" & n).Value = decimalpresent
     'Range("J" & n).Value = lengthpostdec
     Range("K" & n).Value = signficantdigit
-    ActiveSheet.Range("K" & n).Font.Name = "Arial"
-    ActiveSheet.Range("K" & n).Font.Size = 8
-    ActiveSheet.Range("K" & n).VerticalAlignment = xlTop
-    ActiveSheet.Range("K" & n).HorizontalAlignment = xlLeft
     
     If lengthpostdec > 0 Then Range("I" & n).Value = "float"
    
@@ -76,9 +150,13 @@ Do While n <= lRow
     
     
     If origsourcelength = 2 Or InStr(origsourcevalue, "SUPP") Then
-        Range("c" & n).Value = "SDTM." & Range("Q" & n)
+        Range("C" & n).Value = "SDTM"
+        Range("E" & n).Value = "SDTM." & Range("Q" & n)
+        
     ElseIf origsourcelength > 2 And (Trim(origsourcevalue) <> "CRF" And Trim(origsourcevalue) <> "DERIVED") Then
-        Range("c" & n).Value = "ADaM." & Range("Q" & n)
+        Range("C" & n).Value = "ADaM"
+        Range("E" & n).Value = "ADaM." & Range("Q" & n)
+        
     Else: Range("c" & n).Value = Range("q" & n).Value
     End If
     
@@ -125,11 +203,6 @@ Loop
     ActiveSheet.Range(Cells(1, 1), Cells(1, lCol)).AutoFilter
     End If
     
-End Sub
-
-Sub replacestrings()
-
-Call Range_End_Method
 End Sub
 
 
@@ -270,35 +343,5 @@ End Sub
 
 
 
-Sub LoopThroughSheets()
 
-    Dim sheets As Variant
-    
-    
-    Windows("old.xlsx").Activate
-    
-'"AMH","AAE","ACM","ACMANA","AAQAVIS","AEX","AIE","ADV","AAB","APQ","AVS","ALBSAF","ALBBNSP","AQSBPI","ASI","ASLEFF","ASLBASE","ADPC","ALS","ADFDS","ADFCB"
-    
-    sheets = Array("AMH", "AAE", "ACM", "ACMANA", "AAQAVIS", "AEX", "AIE", "ADV", "AAB", "APQ", "AVS", "ALBSAF", "ALBBNSP", "AQSBPI", "ASI", "ASLEFF", "ASLBASE", "ADPC", "ALS", "ADFDS", "ADFCB")
-
-For Number = LBound(sheets) To UBound(sheets)
-    Windows("old.xlsx").Activate
-    dsn = sheets(Number)
-    With Worksheets(sheets(Number))
-        Worksheets(sheets(Number)).Select
-        
-
-        'Macro calls go here
-        
-        'Actual code goes here
-        Call Copycolumns
-        'MsgBox dsn
-        
-        
-    End With
-Next Number
-
-Windows("new.xlsm").Activate
-ActiveWorkbook.Save
-End Sub
 
