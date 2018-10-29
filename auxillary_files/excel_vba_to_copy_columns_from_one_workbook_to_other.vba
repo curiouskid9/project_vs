@@ -345,3 +345,23 @@ End Sub
 
 
 
+Sub scan_test()
+
+Dim list As Variant
+Dim fromsheet As String
+Dim tosheet As String
+Dim tempval As String
+
+list = Array("A~B", "C~D")
+For i = LBound(list) To UBound(list)
+    tempval = list(i)
+    fromsheet = Split(tempval, "~")(0)
+    tosheet = Split(tempval, "~")(1)
+    MsgBox "From: " & fromsheet
+    MsgBox "To: " & tosheet
+    
+
+Next i
+
+
+End Sub
