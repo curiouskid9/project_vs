@@ -31,6 +31,8 @@ run;
                      ,macid=_csg_gc_
                      ,popdenomsdataset=popdenoms
                      ,popbyvar=
+                     ,outdsn=
+                     ,debug=N
                      );
 
 %*--------------------------------------------------------------;
@@ -44,13 +46,27 @@ data _csg_gc_localmacvars;
    name=upcase(name);
    if name="BYVAR" then do;
       value=compbl(value);
+      
+      %*--------------------------------------------------------------------------------;
+      %*use an additional by variable to get the overall record counts in input dataset;
+      %*--------------------------------------------------------------------------------;
       value=catx(" ","_CSGBYVAR",value);
+
+      %*--------------------------------------------------------------------------------;
+      %*create a some temporary local macro variables;
+      %*--------------------------------------------------------------------------------;
+
       call symputx("_byvarlist",value,'L');
       call symputx("_byvarlistsql",translate(strip(value),',',' '),'L');
       call symputx("_byvarcount",countw(value),'L');
    end;
+
    if name="KEYCOUNTVAR" then do;
       value=compbl(value);
+      %*--------------------------------------------------------------------------------;
+      %*use a temporary count variable if no keycount var is passed;
+      %*--------------------------------------------------------------------------------;
+
       if missing(value) then value="_CSGCOUNTVAR";
       call symputx("_csgcountvar",value);
       call symputx("_csgcountvarsql",translate(strip(value),',',' '));
@@ -68,7 +84,11 @@ data &macid.check01;
    call symputx( "_bycountvarcount", listcount,'L');
 run;
 
-data _csg_woking_copy;
+%*--------------------------------------------------------------------------------;
+%*Create a copy of the input dataset, with applicable input filters;
+%*--------------------------------------------------------------------------------;
+
+data &macid.working_copy01;
    set &indsn.;
    &indsnwhere.;
 run;
@@ -78,7 +98,7 @@ run;
 %*-----------------------------------------------;
 
 data _null_;
-   set _csg_woking_copy;
+   set &macid.working_copy01;
    array _csgtemp &_csgcountvar;
    vtype=vtype(_csgtemp[1]);
    call symputx("_csgcountvartype",vtype,'L');
@@ -92,19 +112,33 @@ run;
   enble smooth processing of the macro;
 %*-------------------------------------------------;
 
-data _csg_woking_copy;
+data &macid.working_copy02;
+
+%*--------------------------------------------------------------------------------;
+%*Assign a length of 200, if the variable is character to avoid truncation issues;
+%*--------------------------------------------------------------------------------;
    %if &_csgcountvartype=C %then %do;
       length _csgcountvar $200;
    %end;
 
-   set _csg_woking_copy;
+
+   set &macid.working_copy01;
 
    _csgcountvartype="&_csgcountvartype";
+
+   %*--------------------------------------------------------------------------------;
+   %*create some temporary variables for easy processing of the macro;
+   %*--------------------------------------------------------------------------------;
 
    _csgbyvar=1;%*if no by variables are passed to the macro this will become the default;
    _csgdummynum=1;%*to use as a dummy numeric variable;
    _csgdummychar="CSG";%*to use as a dummy character variable;
   
+
+   %*--------------------------------------------------------------------------------;
+   %*duplicate the records to get the missing/non-missing/total row counts;
+   %*--------------------------------------------------------------------------------;
+
    %if &_csgcountvartype.=N %then %do;
       if not missing(&_csgcountvar.) then do;
          _csgcountvar=&_csgcountvar.; *actual non-missing values;
@@ -141,16 +175,13 @@ data _csg_woking_copy;
    %end;
 run;
 
-proc sort data=_csg_woking_copy;
+proc sort data=&macid.working_copy02;
    by &_byvarlist.;
 run;
 
-proc freq data=_csg_woking_copy noprint;
-   by &_byvarlist.;
-   tables _csgcountvar/out=counts01(rename=(_csgcountvar=&_csgcountvar) drop=percent);
-run;
-
-
+%*--------------------------------------------------------------------------------;
+%*process the variables to determine the overall number of by levels;
+%*--------------------------------------------------------------------------------;
 
 data &macid.check02;
    length var level $1000;
@@ -165,14 +196,17 @@ proc sort data=&macid.check02;
    by descending i;
 run;
 
+%*--------------------------------------------------------------------------------;
+%*macro to get the counts of all levels and merge into a single dataset;
+%*--------------------------------------------------------------------------------;
 
 %macro run_freq(_bylevel=,level=);
 
-proc sort data=_csg_woking_copy;
+proc sort data=&macid.working_copy02;
    by &_bylevel.;
 run;
 
-proc freq data=_csg_woking_copy noprint;
+proc freq data=&macid.working_copy02 noprint;
    by &_bylevel. ;
    %if %eval(&level) lt &_bycountvarcount. %then %do;
       where _csg_derived_row ne 1;
@@ -180,9 +214,11 @@ proc freq data=_csg_woking_copy noprint;
    tables _csgdummynum/out=&macid.counts01_level_&level.(drop=percent _csgdummynum);
 run;
 
-
-%if %eval(&level) lt &_bycountvarcount. %then %do;
-   
+%*--------------------------------------------------------------------------------;
+%*merge individual top level by group counts to lowest level by group counts;
+%*--------------------------------------------------------------------------------;
+ 
+%if %eval(&level) lt &_bycountvarcount. %then %do;   
    data &macid.counts01_final;
       merge &macid.counts01_final 
             &macid.counts01_level_&level.(rename=(count=level&level._count));
@@ -200,15 +236,28 @@ run;
 
 %mend run_freq;
 
+%*--------------------------------------------------------------------------------;
+%*create the macro calls for all levels using call execute;
+%*--------------------------------------------------------------------------------;
+
 data _null_;
    set &macid.check02;
    var=cats('%run_freq(_bylevel=',level,',level=',i,');');
    call execute(var);
 run;
 
+%*--------------------------------------------------------------------------------;
+%*intermediate processing of dataset;
+%*--------------------------------------------------------------------------------;
+
 data &macid.counts01_final;
    set &macid.counts01_final(rename=(_csgcountvar=&_csgcountvar.));
 run;
+
+%*--------------------------------------------------------------------------------;
+%*if the population counts dataset exists(passed as a parameter), then the 
+%* total number of missing counts will be obtained when compared to population total;
+%*--------------------------------------------------------------------------------;
 
 %if &popdenomsdataset ne %then %do;
 
@@ -219,6 +268,11 @@ run;
 proc sort data=&macid.counts01_final;
    by &popbyvar.;
 run;
+
+%*--------------------------------------------------------------------------------;
+%*merge with population counts and get the number of missing count when compared
+%*to populatoin counts;
+%*--------------------------------------------------------------------------------;
 
 data &macid.counts01_final;
    merge &macid.counts01_final(in=a) popdenoms(in=b);
@@ -249,19 +303,38 @@ data &macid.counts01_final;
 run;
 %end;
 
+data &outdsn.;
+   set &macid.counts01_final;
+run;
+
+
+%*-----------------------------------------------------------------------------;
+%*Cleanup;
+%*-----------------------------------------------------------------------------;
+
+%if &debug ne Y %then %do;
+
+proc datasets nowarn library=work memtype=data;
+   delete &macid:;
+   run;
+quit;
+
+%end;
+
 %mend csg_get_counts;
 
 options mprint sgen spool;
 
 %csg_get_counts(indsn=adsl01
                 ,indsnwhere=%str()
-                ,byvar=trt01an agegr1n agegr1
-                ,keycountvar=
+                ,byvar=trt01an 
+                ,keycountvar=race
                 ,popdenomsdataset=popdenoms
                 ,popbyvar=trt01an
+                ,outdsn=levelcounts
+                ,debug=N
                  );
 
 options nomprint nosgen nospool;
 
 %gen_term_001;
-
