@@ -9,7 +9,7 @@ run;
 data adsl01;
    set adam.adsl;
    where saffl="Y";
-   if mod(_n_,10)=1 then race="";
+   if mod(_n_,10)=1 then agegr1n=.;
 run;
 
 proc sql;
@@ -34,6 +34,19 @@ run;
                      ,outdsn=
                      ,debug=N
                      );
+
+%*--------------------------------------------------------------;
+%*format for assigning a label for derived (total/missing) rows;
+%*--------------------------------------------------------------;
+
+proc format;
+   value &macid.level_label(default=60)
+   1001.901="(1001.901) Total: Non-missing result in data"
+   1001.902="(1001.902) Missing: Record present, value missing"
+   1001.903="(1001.903) Missing: Popultation count minus available non-missing data"
+   1001.904="(1001.904) Total: All rows present in data"
+   ;
+run;
 
 %*--------------------------------------------------------------;
 %*get the list of parameters of the this macro;
@@ -155,6 +168,7 @@ data &macid.working_copy02;
       _csg_derived_row=1;
       _csgcountvar=1001.904; *total rows present in data including missing values;
       output;
+      format _csgcountvar &macid.level_label.;
    %end;
    %else %do;
        if not missing(&_csgcountvar.) then do;
@@ -305,6 +319,7 @@ run;
 
 data &outdsn.;
    set &macid.counts01_final;
+   drop _csgbyvar;
 run;
 
 
@@ -326,9 +341,9 @@ quit;
 options mprint sgen spool;
 
 %csg_get_counts(indsn=adsl01
-                ,indsnwhere=%str()
-                ,byvar=trt01an 
-                ,keycountvar=race
+                ,indsnwhere=%str(where sex="F";)
+                ,byvar= trt01an
+                ,keycountvar=agegr1n
                 ,popdenomsdataset=popdenoms
                 ,popbyvar=trt01an
                 ,outdsn=levelcounts
