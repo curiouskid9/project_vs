@@ -1,3 +1,28 @@
+*---------------------------------------------------------------------------;
+*subset condition for 3 subjects under each treatment;
+*---------------------------------------------------------------------------;
+proc sort data=sdtm.ddm out=dm01;
+    by armcd usubjid;
+run;
+
+data dm02;
+    set dm01;
+    by armcd usubjid;
+    if first.armcd then rec=1;
+    else rec+1;
+    if rec le 5;
+run;
+
+proc sql;
+    select distinct quote(strip(usubjid)) into:subjs separated by " "
+    from dm02;
+quit;
+
+%put &=subjs;
+
+*----------------------------------------------------------------------------;
+
+
 %macro flatfilc
 (lib=, /* libref for input dataset */
 dsn=, /* memname for input dataset */
