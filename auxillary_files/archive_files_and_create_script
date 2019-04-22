@@ -1,0 +1,157 @@
+
+
+%let root=/userdata/stat/compound/indication/protocol/analysis/openlabel/;
+
+/*createadam/validation/program*/
+
+%macro newfolder(newfld);
+%local rc fileref;
+%let rc=%sysfunc(filename(fileref,&newfld));
+%if %sysfunc(fexist(&fileref)) %then %put NOTE:The directory "&newfld" already EXISTED.;
+%else %do;
+         %sysexec mkdir -p "&newfld";
+         %put NOTE:The directory "&newfld" has been CREATED.;
+      %end;
+%let rc=%sysfunc(filename(fileref));
+%mend newfolder;
+
+*-----------------------------------------------;
+*get the current run time;
+*-----------------------------------------------;
+
+data _null_;
+    time=time();
+    date=date();
+    datetime = compress(put(date,yymmdd10.)||"T"||put(time,tod5.));
+    datetime2=compress(datetime,':');
+    call symputx('_x_x_run_time',datetime);
+    call symputx('_x_x_run_time2',datetime2);
+run;
+
+data programs;
+	input progname : $50.;
+	if not missing(progname);
+	output=lowcase(progname);
+cards;
+ADSL
+ADAE
+;
+run;
+
+*-----------------------------------------------------------------------;
+*datasests archival;
+*-----------------------------------------------------------------------;
+
+%newfolder(&root.statdata/adam/history/&_x_x_run_time2.);
+
+data _null_;
+	set programs;
+	length text source destination $1000;
+	source="&root.statdata/adam/"||strip(output)||".sas7bdat";
+	destination="&root.statdata/adam/history/&_x_x_run_time2./"||strip(output)||".sas7bdat";
+	text='%sysexec mv -f ' ||strip(source)||" "||strip(destination);
+	call execute(text);
+run;
+
+
+*-----------------------------------------------------------------------;
+*production program and system files archival;
+*-----------------------------------------------------------------------;
+
+%newfolder(&root.createadam/history/&_x_x_run_time2.);
+
+data _null_;
+	set programs;
+	length text source destination $1000;
+	
+	*---------------------;
+	*copy sas files;
+	*---------------------;
+	source="&root.createadam/"||strip(output)||".sas";
+	destination="&root.createadam/history/&_x_x_run_time2./"||strip(output)||".sas";
+	text='%sysexec cp -p ' ||strip(source)||" "||strip(destination);
+	call execute(text);
+
+	*---------------------;
+	*move log and lst files;
+	*---------------------;
+	length text source destination $1000;
+	source="&root.createadam/"||strip(output)||".l*";
+	destination="&root.createadam/history/&_x_x_run_time2./";
+	text='%sysexec mv -f ' ||strip(source)||" "||strip(destination);
+	call execute(text);
+run;
+
+
+*-----------------------------------------------------------------------;
+*validation program and system files archival;
+*-----------------------------------------------------------------------;
+
+%newfolder(&root.createadam/validation/program/history/&_x_x_run_time2.);
+
+data _null_;
+	set programs;
+	length text source destination $1000;
+	
+	*-------------------------------------------;
+	*concatenate the validation prefix;
+	*-------------------------------------------;
+	output="v-"||strip(output);
+
+	*---------------------;
+	*copy sas files;
+	*---------------------;
+	source="&root.createadam/validation/program/"||strip(output)||".sas";
+	destination="&root.createadam/validation/program/history/&_x_x_run_time2./"||strip(output)||".sas";
+	text='%sysexec cp -p ' ||strip(source)||" "||strip(destination);
+	call execute(text);
+
+	*---------------------;
+	*move log and lst files;
+	*---------------------;
+	length text source destination $1000;
+	source="&root.createadam/validation/program/"||strip(output)||".l*";
+	destination="&root.createadam/validation/program/history/&_x_x_run_time2./";
+	text='%sysexec mv -f ' ||strip(source)||" "||strip(destination);
+	call execute(text);
+run;
+
+*--------------------------------------------------------------------------------------;
+*run script creator;
+*--------------------------------------------------------------------------------------;
+
+data _null_;
+	set programs;
+	length text source $1000;
+	file "&root/createadam/run_adam_prod_and_qc.sh";
+
+	*--------------------------------------;
+	*initialize script;
+	*--------------------------------------;
+	if _n_=1 then do;
+		put "SHELL='/bin/bash'";
+		put "export SHELL" //;
+	end;
+
+	*--------------------------------------;
+	*production code script;
+	*--------------------------------------;
+	source="&root.createadam/";
+	text=strip(output)||".sas";
+
+	put "cd " source ;
+	put "runsas -c " text//;
+
+	*--------------------------------------;
+	*QC code script;
+	*--------------------------------------;
+	source="&root.createadam/validation/program";
+	text="v-"||strip(output)||".sas";
+
+	put "cd " source ;
+	put "runsas -c " text//;
+
+run;
+
+
+
