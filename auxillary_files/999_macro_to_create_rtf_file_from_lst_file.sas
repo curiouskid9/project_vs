@@ -253,7 +253,7 @@
 %if &_x_x_batch_run ne 1 %then %do;
 %if &preview=Y %then %do;
    options noxsync noxwait xmin;
-    x "M:\SDDEXT036\lillyce\ly450190\h6d_mc_lvjj\final_ole\programs_nonsdd\tfl_output\&rptnm..rtf";
+    x "\tfl_output\&rptnm..rtf";
    options xsync xwait noxmin;
 %end;
 %end;
